@@ -1,0 +1,27 @@
+## Server Properties
+server:
+    port: 8080
+    compression:
+        enabled: true
+spring:
+    jackson:
+        serialization:
+            WRITE_DATES_AS_TIMESTAMPS: false
+        time-zone: UTC
+    datasource:
+      driver-class-name: org.h2.Driver
+      url: jdbc:h2:mem:bootapp;DB_CLOSE_DELAY=-1
+      username: sa
+      password:
+      platform: hsqldb
+
+security:
+    jwt:
+        secret: JWTSuperSecretKey
+        expiration: 604800000
+        
+## App Properties
+    
+
+## Spring Profiles
+# spring.profiles.active=prod
