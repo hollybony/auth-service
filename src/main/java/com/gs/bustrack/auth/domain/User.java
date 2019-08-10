@@ -53,6 +53,9 @@ public class User extends DateAudit {
     @NotBlank
     @Size(max = 100)
     private String password;
+    
+    @Column(name = "enabled")
+    private boolean enabled;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles",

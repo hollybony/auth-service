@@ -18,6 +18,7 @@ import java.util.List;
  */
 @Component
 public class AppUserDetailsService implements UserDetailsService {
+
     @Autowired
     private UserRepository userRepository;
 
