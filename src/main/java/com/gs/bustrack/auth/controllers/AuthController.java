@@ -10,13 +10,14 @@ import com.gs.bustrack.auth.domain.User;
 import com.gs.bustrack.auth.domain.VerificationToken;
 import com.gs.bustrack.auth.ex.AppException;
 import com.gs.bustrack.auth.repositories.RoleRepository;
+import com.gs.bustrack.auth.repositories.VerificationTokenRepository;
 import com.gs.bustrack.auth.security.JwtTokenProvider;
 import com.gs.bustrack.auth.services.OnRegistrationCompleteEvent;
 import com.gs.bustrack.auth.services.UserService;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.Locale;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -49,6 +50,9 @@ public class AuthController {
 
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private VerificationTokenRepository tokenRepository;
 
     @Autowired
     private RoleRepository roleRepository;
@@ -62,8 +66,8 @@ public class AuthController {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
-    @GetMapping("/regConfirm")
-    public void confirmRegistration(WebRequest request, @RequestParam("token") String token) {
+    @GetMapping("/confirm/email")
+    public String confirmRegistration(WebRequest request, @RequestParam("token") String token) {
         VerificationToken verificationToken = userService.getVerificationToken(token);
         if (verificationToken == null) {
             throw new RuntimeException("There is such a token.");
@@ -75,6 +79,7 @@ public class AuthController {
         }
         user.setEnabled(true);
         userService.save(user);
+        return String.format("Email %s has been verified.", user.getEmail());
     }
 
     @PostMapping("/signin")
@@ -90,8 +95,15 @@ public class AuthController {
         return ResponseEntity.ok(new JwtAuthResponse(jwt));
     }
 
+    /**
+     * Register a new user
+     * 
+     * @param signUpRequest
+     * @param request
+     * @return 
+     */
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse> registerUser(@Valid @RequestBody SignUpRequest signUpRequest, WebRequest request) {
+    public ResponseEntity<ApiResponse> registerUser(@Valid @RequestBody SignUpRequest signUpRequest, HttpServletRequest request) {
         if (userService.existsByUsername(signUpRequest.getUsername())) {
             return new ResponseEntity<>(ApiResponse.builder()
                     .success(false)
@@ -109,25 +121,27 @@ public class AuthController {
                 .name(signUpRequest.getName())
                 .username(signUpRequest.getUsername())
                 .email(signUpRequest.getEmail())
-                .password(signUpRequest.getPassword()).build();
-
-//        User user = new User(signUpRequest.getName(), signUpRequest.getUsername(),
-//                signUpRequest.getEmail(), signUpRequest.getPassword());
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+                .password(passwordEncoder.encode(signUpRequest.getPassword())).build();
         Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
                 .orElseThrow(() -> new AppException("User Role not set."));
         user.setRoles(Collections.singleton(userRole));
         User registered = userService.save(user);
-        String appUrl = request.getContextPath();
-        eventPublisher.publishEvent(
-                
-                new OnRegistrationCompleteEvent(registered, request.getLocale(), appUrl));
+        String baseUrl = String.format("%s://%s:%d/api/auth/confirm/email",request.getScheme(), request.getServerName(),
+                request.getServerPort());
+        //String appUrl = request.getLocalAddr();
+        eventPublisher.publishEvent(new OnRegistrationCompleteEvent(registered,
+                request.getLocale(), baseUrl));
         URI location = ServletUriComponentsBuilder
                 .fromCurrentContextPath().path("/users/{username}")
                 .buildAndExpand(registered.getUsername()).toUri();
         return ResponseEntity.created(location).body(ApiResponse.builder()
                 .success(true)
                 .message("User registered successfully").build());
+    }
+    
+    @GetMapping("/tokens")
+    public Iterable<VerificationToken> getTokens() {
+        return tokenRepository.findAll();
     }
 
     @GetMapping("/users")

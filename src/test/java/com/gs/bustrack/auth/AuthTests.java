@@ -71,7 +71,7 @@ public class AuthTests {
         SignUpRequest request = new SignUpRequest();
         request.setName("Carlos");
         request.setUsername("user-carlos");
-        request.setEmail("carlos@gmail.com");
+        request.setEmail("carloantonioj@gmail.com");
         request.setPassword("thePass");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

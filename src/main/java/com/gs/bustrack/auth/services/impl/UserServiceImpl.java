@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import com.gs.bustrack.auth.services.UserService;
+import java.time.Instant;
+import java.time.LocalDate;
 
 /**
  * @author Carlos Juarez
@@ -49,7 +51,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public VerificationToken createVerificationToken(User user, String rawToken) {
-        VerificationToken token = VerificationToken.builder().token(rawToken).user(user).build();
+        Instant expiryDate = Instant.now().plusMillis(86400000);//1 day
+        VerificationToken token = VerificationToken.builder()
+                .token(rawToken)
+                .expiryDate(expiryDate)
+                .user(user).build();
         return tokenRepository.save(token);
     }
 
