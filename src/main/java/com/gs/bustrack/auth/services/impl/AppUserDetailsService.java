@@ -24,7 +24,7 @@ public class AppUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String s) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(s).orElse(null);
+        User user = userRepository.findByName(s).orElse(null);
         if(user == null) {
             throw new UsernameNotFoundException(String.format("The username %s doesn't exist", s));
         }
@@ -33,7 +33,7 @@ public class AppUserDetailsService implements UserDetailsService {
             authorities.add(new SimpleGrantedAuthority(role.getName().toString()));
         });
         UserDetails userDetails = new org.springframework.security.core.userdetails.
-                User(user.getUsername(), user.getPassword(), authorities);
+                User(user.getName(), user.getPassword(), authorities);
         return userDetails;
     }
 }

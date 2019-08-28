@@ -27,6 +27,7 @@ import org.springframework.data.annotation.CreatedDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VerificationToken implements Serializable{
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;

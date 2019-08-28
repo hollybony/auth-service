@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import com.gs.bustrack.auth.services.UserService;
 import java.time.Instant;
-import java.time.LocalDate;
 
 /**
  * @author Carlos Juarez
@@ -26,12 +25,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findByUsername(String username) {
-        return userRepository.findByUsername(username).orElse(null);
+        return userRepository.findByName(username).orElse(null);
     }
     
     @Override
     public boolean existsByUsername(String username){
-        return userRepository.existsByUsername(username);
+        return userRepository.existsByName(username);
     }
     
     @Override

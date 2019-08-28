@@ -4,6 +4,7 @@ import javax.persistence.*;
 import java.util.Set;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +20,7 @@ import org.hibernate.annotations.NaturalId;
 @Entity
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(columnNames = {
-            "username"
+            "user_name"
         }),
         @UniqueConstraint(columnNames = {
             "email"
@@ -36,23 +37,23 @@ public class User extends DateAudit {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
-    @Size(max = 40)
-    private String name;
-
-    @NotBlank
-    @Size(max = 15)
-    private String username;
-
     @NaturalId
-    @NotBlank
+    @NotNull
     @Size(max = 40)
     @Email
     private String email;
+    
+    @NotBlank
+    @Size(max = 15)
+    @Column(name = "user_name")
+    private String name;
 
     @NotBlank
-    @Size(max = 100)
     private String password;
+
+    @Size(min = 8, max = 8)
+    @Column(name = "service_id")
+    private String serviceId;
     
     @Column(name = "enabled")
     private boolean enabled;

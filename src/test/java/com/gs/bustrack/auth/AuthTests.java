@@ -8,7 +8,9 @@ import com.gs.bustrack.auth.dto.LoginRequest;
 import com.gs.bustrack.auth.dto.SignUpRequest;
 import com.gs.bustrack.auth.repositories.RoleRepository;
 import com.gs.bustrack.auth.repositories.UserRepository;
+import com.gs.bustrack.auth.repositories.VerificationTokenRepository;
 import java.util.Collections;
+import java.util.Optional;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -42,6 +44,9 @@ public class AuthTests {
      */
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private VerificationTokenRepository tokenRepository;
 
     @Autowired
     RoleRepository roleRepository;
@@ -63,31 +68,35 @@ public class AuthTests {
 
     @Before
     public void init() {
+        tokenRepository.deleteAll();
         userRepository.deleteAll();
     }
 
     @Test
     public void signup() {
         SignUpRequest request = new SignUpRequest();
-        request.setName("Carlos");
         request.setUsername("user-carlos");
-        request.setEmail("carloantonioj@gmail.com");
-        request.setPassword("thePass");
+        request.setEmail("carlos@gmail.com");
+        request.setPassword("the-Passa");
+        request.setServiceId("10-20-30");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         ResponseEntity<ApiResponse> response = restTemplate.postForEntity("http://localhost:" + port + "/api/auth/signup",
                 new HttpEntity<>(request, headers), ApiResponse.class);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertTrue(userRepository.findByEmail("carlos@gmail.com").isPresent());
+        Optional<User> userGotten = userRepository.findByEmail("carlos@gmail.com");
+        assertTrue(userGotten.isPresent());
+        assertEquals("user-carlos", userGotten.get().getName());
+        assertEquals("10-20-30", userGotten.get().getServiceId());
     }
 
     @Test
     public void sigin() {
         User user = User.builder()
-                .name("Carlos")
-                .username("user-carlos")
+                .name("user-carlos")
                 .email("carlos@gmail.com")
                 .password(passwordEncoder.encode("thePass"))
+                .enabled(true)
                 .build();
         user.setRoles(Collections.singleton(roleRepository.findByName(RoleName.ROLE_USER).get()));
         userRepository.save(user);
@@ -105,60 +114,59 @@ public class AuthTests {
     @Test
     public void getIntoAutorized() {
         User user = User.builder()
-                .name("Carlos")
-                .username("user-carlos")
+                .name("user-carlos")
                 .email("carlos@gmail.com")
-                .password(passwordEncoder.encode("thePass"))
+                .password(passwordEncoder.encode("the-Pass"))
+                .enabled(true)
                 .build();
         user.setRoles(Collections.singleton(roleRepository.findByName(RoleName.ROLE_USER).get()));
         userRepository.save(user);
 
         LoginRequest request = new LoginRequest();
         request.setUsernameOrEmail("carlos@gmail.com");
-        request.setPassword("thePass");
+        request.setPassword("the-Pass");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         ResponseEntity<JwtAuthResponse> response = restTemplate.postForEntity("http://localhost:" + port + "/api/auth/signin",
                 new HttpEntity<>(request, headers), JwtAuthResponse.class);
         JwtAuthResponse token = response.getBody();
-
+        assertNotNull(token);
         headers.set("Authorization", "Bearer " + token.getAccessToken());
-        //headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<String> entity = new HttpEntity<>("body", headers);
 
         ResponseEntity<User[]> lastResponse = restTemplate.exchange("http://localhost:" + port + "/api/users",
                 HttpMethod.GET, entity, User[].class);
         assertEquals(HttpStatus.OK, lastResponse.getStatusCode());
-        assertEquals(1, lastResponse.getBody().length);
+        User[] users = lastResponse.getBody();
+        assertNotNull(users);
+        assertEquals(1, users.length);
     }
 
     @Test
     public void refusedAutorized() {
         User user = User.builder()
-                .name("Carlos")
-                .username("user-carlos")
+                .name("user-carlos")
                 .email("carlos@gmail.com")
-                .password(passwordEncoder.encode("thePass"))
+                .password(passwordEncoder.encode("the-Pass"))
+                .enabled(true)
                 .build();
         user.setRoles(Collections.singleton(roleRepository.findByName(RoleName.ROLE_ADMIN).get()));
         userRepository.save(user);
 
         LoginRequest request = new LoginRequest();
         request.setUsernameOrEmail("carlos@gmail.com");
-        request.setPassword("thePass");
+        request.setPassword("the-Pass");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         ResponseEntity<JwtAuthResponse> response = restTemplate.postForEntity("http://localhost:" + port + "/api/auth/signin",
                 new HttpEntity<>(request, headers), JwtAuthResponse.class);
         JwtAuthResponse token = response.getBody();
-
+        assertNotNull(token);
         headers.set("Authorization", "Bearer " + token.getAccessToken());
-        //headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         HttpEntity<String> entity = new HttpEntity<>("body", headers);
 
         ResponseEntity<Object> lastResponse = restTemplate.exchange("http://localhost:" + port + "/api/users",
                 HttpMethod.GET, entity, Object.class);
         assertEquals(HttpStatus.FORBIDDEN, lastResponse.getStatusCode());
     }
-
 }

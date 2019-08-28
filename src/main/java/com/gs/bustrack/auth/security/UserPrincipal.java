@@ -17,8 +17,6 @@ public class UserPrincipal implements UserDetails {
 
     private final Long id;
 
-    private final String name;
-
     private final String username;
 
     @JsonIgnore
@@ -35,8 +33,7 @@ public class UserPrincipal implements UserDetails {
         ).collect(Collectors.toList());
         return UserPrincipal.builder()
                 .id(user.getId())
-                .name(user.getName())
-                .username(user.getUsername())
+                .username(user.getName())
                 .email(user.getEmail())
                 .password(user.getPassword())
                 .authorities(authorities).build();
@@ -44,10 +41,6 @@ public class UserPrincipal implements UserDetails {
 
     public Long getId() {
         return id;
-    }
-
-    public String getName() {
-        return name;
     }
 
     public String getEmail() {
@@ -99,7 +92,6 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public int hashCode() {
-
         return Objects.hash(id);
     }
 }

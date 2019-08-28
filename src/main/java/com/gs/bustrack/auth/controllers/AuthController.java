@@ -50,7 +50,7 @@ public class AuthController {
 
     @Autowired
     private UserService userService;
-    
+
     @Autowired
     private VerificationTokenRepository tokenRepository;
 
@@ -97,10 +97,10 @@ public class AuthController {
 
     /**
      * Register a new user
-     * 
+     *
      * @param signUpRequest
      * @param request
-     * @return 
+     * @return
      */
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse> registerUser(@Valid @RequestBody SignUpRequest signUpRequest, HttpServletRequest request) {
@@ -118,27 +118,28 @@ public class AuthController {
         }
         // Creating user's account
         User user = User.builder()
-                .name(signUpRequest.getName())
-                .username(signUpRequest.getUsername())
+                .name(signUpRequest.getUsername())
                 .email(signUpRequest.getEmail())
-                .password(passwordEncoder.encode(signUpRequest.getPassword())).build();
+                .password(passwordEncoder.encode(signUpRequest.getPassword()))
+                .serviceId(signUpRequest.getServiceId())
+                .build();
         Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
                 .orElseThrow(() -> new AppException("User Role not set."));
         user.setRoles(Collections.singleton(userRole));
         User registered = userService.save(user);
-        String baseUrl = String.format("%s://%s:%d/api/auth/confirm/email",request.getScheme(), request.getServerName(),
+        String baseUrl = String.format("%s://%s:%d/api/auth/confirm/email", request.getScheme(), request.getServerName(),
                 request.getServerPort());
         //String appUrl = request.getLocalAddr();
         eventPublisher.publishEvent(new OnRegistrationCompleteEvent(registered,
                 request.getLocale(), baseUrl));
         URI location = ServletUriComponentsBuilder
                 .fromCurrentContextPath().path("/users/{username}")
-                .buildAndExpand(registered.getUsername()).toUri();
+                .buildAndExpand(registered.getName()).toUri();
         return ResponseEntity.created(location).body(ApiResponse.builder()
                 .success(true)
                 .message("User registered successfully").build());
     }
-    
+
     @GetMapping("/tokens")
     public Iterable<VerificationToken> getTokens() {
         return tokenRepository.findAll();

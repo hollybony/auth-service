@@ -1,6 +1,8 @@
 package com.gs.bustrack.auth.dto;
 
-import javax.validation.constraints.*;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,20 +14,18 @@ import lombok.Setter;
 @Setter
 public class SignUpRequest {
 
-    @NotBlank
-    @Size(min = 4, max = 40)
-    private String name;
-
-    @NotBlank
+    @NotNull
     @Size(min = 3, max = 15)
     private String username;
 
-    @NotBlank
-    @Size(max = 40)
+    @NotNull
     @Email
     private String email;
 
-    @NotBlank
-    @Size(min = 6, max = 20)
+    @NotNull
+    @Size(min = 8, max = 20)
     private String password;
+    
+    @Size(min = 8, max = 8)
+    private String serviceId;
 }
