@@ -4,16 +4,16 @@ package com.gs.bustrack.auth.dto;
  * 
  * @author Carlos Juarez
  */
-public class JwtAuthResponse {
+public class Token {
     
     private String accessToken;
     
     private String tokenType = "Bearer";
 
-    public JwtAuthResponse() {
+    public Token() {
     }
     
-    public JwtAuthResponse(String accessToken) {
+    public Token(String accessToken) {
         this.accessToken = accessToken;
     }
 

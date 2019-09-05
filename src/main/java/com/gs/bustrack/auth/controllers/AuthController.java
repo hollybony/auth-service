@@ -3,12 +3,14 @@ package com.gs.bustrack.auth.controllers;
 import com.gs.bustrack.auth.domain.Role;
 import com.gs.bustrack.auth.domain.RoleName;
 import com.gs.bustrack.auth.dto.ApiResponse;
-import com.gs.bustrack.auth.dto.JwtAuthResponse;
+import com.gs.bustrack.auth.dto.Token;
 import com.gs.bustrack.auth.dto.LoginRequest;
 import com.gs.bustrack.auth.dto.SignUpRequest;
 import com.gs.bustrack.auth.domain.User;
 import com.gs.bustrack.auth.domain.VerificationToken;
 import com.gs.bustrack.auth.ex.AppException;
+import com.gs.bustrack.auth.ex.SigninException;
+import com.gs.bustrack.auth.ex.SignupException;
 import com.gs.bustrack.auth.repositories.RoleRepository;
 import com.gs.bustrack.auth.repositories.VerificationTokenRepository;
 import com.gs.bustrack.auth.security.JwtTokenProvider;
@@ -17,13 +19,17 @@ import com.gs.bustrack.auth.services.UserService;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,7 +41,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
  *
@@ -44,6 +49,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -83,16 +90,29 @@ public class AuthController {
     }
 
     @PostMapping("/signin")
-    public ResponseEntity<JwtAuthResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsernameOrEmail(),
-                        loginRequest.getPassword()
-                )
-        );
+    public Token authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+        LOG.debug("signing user {}", loginRequest.getUsernameOrEmail());
+        Authentication authentication = null;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getUsernameOrEmail(),
+                            loginRequest.getPassword()
+                    ));
+        } catch (BadCredentialsException ex) {
+            throw new SigninException("Bad credentials");
+        }
+        Optional<User> userFound = userService.findByUsername(loginRequest.getUsernameOrEmail());
+        if (userFound.isPresent() && userFound.get().isEnabled() == false) {
+            throw new SigninException(String.format("User %s is not enabled.", userFound.get().getName()));
+        }
+        userFound = userService.findByEmail(loginRequest.getUsernameOrEmail());
+        if (userFound.isPresent() && userFound.get().isEnabled() == false) {
+            throw new SigninException(String.format("User %s is not enabled.", userFound.get().getName()));
+        }
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = tokenProvider.generateToken(authentication);
-        return ResponseEntity.ok(new JwtAuthResponse(jwt));
+        return new Token(jwt);
     }
 
     /**
@@ -103,18 +123,12 @@ public class AuthController {
      * @return
      */
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse> registerUser(@Valid @RequestBody SignUpRequest signUpRequest, HttpServletRequest request) {
+    public User registerUser(@Valid @RequestBody SignUpRequest signUpRequest, HttpServletRequest request) {
         if (userService.existsByUsername(signUpRequest.getUsername())) {
-            return new ResponseEntity<>(ApiResponse.builder()
-                    .success(false)
-                    .message("Username is already taken!").build(),
-                    HttpStatus.BAD_REQUEST);
+            throw new SignupException("Username [%s] is already taken.", signUpRequest.getUsername());
         }
         if (userService.existsByEmail(signUpRequest.getEmail())) {
-            return new ResponseEntity<>(ApiResponse.builder()
-                    .success(false)
-                    .message("Email Address already in use!").build(),
-                    HttpStatus.BAD_REQUEST);
+            throw new SignupException("Email address [%s] is already in use.", signUpRequest.getEmail());
         }
         // Creating user's account
         User user = User.builder()
@@ -129,15 +143,9 @@ public class AuthController {
         User registered = userService.save(user);
         String baseUrl = String.format("%s://%s:%d/api/auth/confirm/email", request.getScheme(), request.getServerName(),
                 request.getServerPort());
-        //String appUrl = request.getLocalAddr();
         eventPublisher.publishEvent(new OnRegistrationCompleteEvent(registered,
                 request.getLocale(), baseUrl));
-        URI location = ServletUriComponentsBuilder
-                .fromCurrentContextPath().path("/users/{username}")
-                .buildAndExpand(registered.getName()).toUri();
-        return ResponseEntity.created(location).body(ApiResponse.builder()
-                .success(true)
-                .message("User registered successfully").build());
+        return registered;
     }
 
     @GetMapping("/tokens")

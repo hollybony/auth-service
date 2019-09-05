@@ -4,13 +4,16 @@ package com.gs.bustrack.auth.services;
 import java.util.List;
 import com.gs.bustrack.auth.domain.User;
 import com.gs.bustrack.auth.domain.VerificationToken;
+import java.util.Optional;
 
 /**
  * Carlos Juarez
  */
 public interface UserService {
     
-    User findByUsername(String username);
+    Optional<User> findByUsername(String username);
+    
+    Optional<User> findByEmail(String email);
     
     boolean existsByUsername(String username);
 

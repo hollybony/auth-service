@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import com.gs.bustrack.auth.services.UserService;
 import java.time.Instant;
+import java.util.Optional;
 
 /**
  * @author Carlos Juarez
@@ -24,8 +25,13 @@ public class UserServiceImpl implements UserService {
     private VerificationTokenRepository tokenRepository;
 
     @Override
-    public User findByUsername(String username) {
-        return userRepository.findByName(username).orElse(null);
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByName(username);
+    }
+    
+    @Override
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
     
     @Override
